@@ -18,23 +18,41 @@ module sync_fifo #(
 
     localparam ADDR_W = (DEPTH <= 1) ? 1 : $clog2(DEPTH);
 
-    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
+    reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];//数组
 
+    
+    
     // TODO 1 : 读写指针，建议用 ADDR_W+1 位，最高位区分空满
+    reg [ADDR_W:0]wptr ;
+    reg[ADDR_W:0] rptr;
 
     // TODO 2 : empty / full
+    wire empty=(wptr == rptr);
+    wire full=((wptr[ADDR_W]!=rptr[ADDR_W]) && (wptr[ADDR_W-1:0]==rptr[ADDR_W-1:0]));
+
 
     // TODO 3 : 握手输出信号
-    assign in_ready  = 1'b0;
-    assign out_valid = 1'b0;
-    assign out_data  = {DATA_WIDTH{1'b0}};
+    assign in_ready  = ~full;
+    assign out_valid = ~empty;
+    assign out_data  = mem [rptr[ADDR_W-1:0]];
 
     // TODO 4 : 时序逻辑，写握手存数据并更新读写指针
     integer i;
     always @(posedge clk) begin
         if (!rstn) begin
+            wptr<=0;
+            rptr<=0;
             for (i = 0; i < DEPTH; i = i + 1) mem[i] <= {DATA_WIDTH{1'b0}};
         end else begin
+            //写
+            if(in_valid && in_ready)begin
+                mem [wptr[ADDR_W-1:0]]<=in_data ;
+                wptr<=wptr+1;
+            end
+            //读
+            if(out_valid && out_ready)begin
+                rptr<=rptr+1;
+            end
         end
     end
 
